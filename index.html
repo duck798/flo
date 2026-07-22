@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="AR Video Call – Gọi video thời gian thực với hiệu ứng AR thú vị được hỗ trợ bởi MediaPipe và PeerJS." />
+  <title>Video Call Test</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- PeerJS -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+  <!-- MediaPipe FaceMesh -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <!-- MediaPipe Hands -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <!-- MediaPipe Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <!-- MediaPipe Drawing Utils (tùy chọn cho debug) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- ============================================================
+  LỚP NỀN: Hiệu ứng hạt lấp lánh nền toàn trang
+============================================================ -->
+<canvas id="bg-canvas"></canvas>
+
+<!-- ============================================================
+  MÀN HÌNH LOBBY: Nhập / tạo Room ID để bắt đầu cuộc gọi
+============================================================ -->
+<div id="lobby-screen" class="screen active">
+  <div class="lobby-card">
+    <div class="logo-area">
+      <div class="logo-icon">📹</div>
+      <h1 class="logo-title">Video Call Test</h1>
+      <p class="logo-subtitle">Kết nối video nhanh chóng & vui vẻ</p>
+    </div>
+
+    <!-- Tạo phòng mới -->
+    <div class="lobby-section">
+      <h2 class="section-label">Tạo phòng mới</h2>
+      <button id="btn-create-room" class="btn btn-primary btn-full">
+        <span class="btn-icon">✨</span> Tạo phòng ngay
+      </button>
+    </div>
+
+    <div class="divider"><span>hoặc</span></div>
+
+    <!-- Tham gia phòng đã có -->
+    <div class="lobby-section">
+      <h2 class="section-label">Tham gia phòng</h2>
+      <div class="input-group">
+        <input
+          id="input-room-id"
+          type="text"
+          placeholder="Nhập Room ID..."
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="btn-join-room" class="btn btn-secondary">
+          Vào 🚀
+        </button>
+      </div>
+    </div>
+
+    <!-- Hiển thị Room ID sau khi tạo -->
+    <div id="room-id-display" class="room-id-box hidden">
+      <p class="room-id-label">Room ID của bạn:</p>
+      <div class="room-id-value-row">
+        <span id="room-id-text" class="room-id-value"></span>
+        <button id="btn-copy-room-id" class="btn btn-icon-only" title="Sao chép">📋</button>
+      </div>
+      <p class="room-id-hint">Chia sẻ ID này cho người kia để họ tham gia!</p>
+    </div>
+
+    <p id="lobby-status" class="lobby-status"></p>
+  </div>
+</div>
+
+<!-- ============================================================
+  MÀN HÌNH CUỘC GỌI: Layout video + toolbar + AR menu
+============================================================ -->
+<div id="call-screen" class="screen">
+
+  <!-- VIDEO REMOTE: Người bên kia (toàn màn hình) -->
+  <div id="remote-video-container" class="remote-video-container">
+    <video id="remote-video" autoplay playsinline></video>
+    <!-- Overlay khi đang chờ kết nối -->
+    <div id="waiting-overlay" class="waiting-overlay">
+      <div class="waiting-spinner"></div>
+      <p>Đang chờ người dùng khác tham gia...</p>
+    </div>
+  </div>
+
+  <!-- VIDEO LOCAL: Bản thân (Picture-in-Picture) -->
+  <div id="local-video-container" class="local-video-container" id="pip-container">
+    <!-- Video gốc từ camera (ẩn, dùng làm nguồn cho MediaPipe) -->
+    <video id="local-video-raw" autoplay muted playsinline class="hidden-source"></video>
+    <!-- Canvas hiển thị video đã có overlay AR -->
+    <canvas id="local-canvas" class="local-canvas"></canvas>
+    <!-- Badge hiển thị tên hiệu ứng đang bật -->
+    <div id="effect-badge" class="effect-badge hidden"></div>
+  </div>
+
+  <!-- TOOLBAR: Thanh công cụ dưới cùng -->
+  <div id="toolbar" class="toolbar">
+    <!-- Nút Mic -->
+    <button id="btn-toggle-mic" class="tool-btn active" title="Bật/Tắt Mic" aria-label="Toggle Microphone">
+      <span class="tool-btn-icon" id="mic-icon">🎤</span>
+      <span class="tool-btn-label">Mic</span>
+    </button>
+
+    <!-- Nút Camera -->
+    <button id="btn-toggle-cam" class="tool-btn active" title="Bật/Tắt Camera" aria-label="Toggle Camera">
+      <span class="tool-btn-icon" id="cam-icon">📷</span>
+      <span class="tool-btn-label">Camera</span>
+    </button>
+
+    <!-- Nút Kết thúc cuộc gọi -->
+    <button id="btn-end-call" class="tool-btn danger" title="Kết thúc cuộc gọi" aria-label="End Call">
+      <span class="tool-btn-icon">📵</span>
+      <span class="tool-btn-label">Kết thúc</span>
+    </button>
+
+    <!-- Nút AR Effects (ngụy trang như nút bình thường) -->
+    <button id="btn-ar-menu" class="tool-btn" title="Hiệu ứng AR" aria-label="AR Effects Menu">
+      <span class="tool-btn-icon">🎭</span>
+      <span class="tool-btn-label">Hiệu ứng</span>
+    </button>
+
+    <!-- Nút thông tin Room -->
+    <button id="btn-room-info" class="tool-btn" title="Thông tin phòng" aria-label="Room Info">
+      <span class="tool-btn-icon">🔗</span>
+      <span class="tool-btn-label">Phòng</span>
+    </button>
+  </div>
+
+  <!-- PANEL AR MENU: Menu chọn hiệu ứng AR (slide-up từ dưới) -->
+  <div id="ar-menu-panel" class="ar-menu-panel hidden" role="dialog" aria-label="AR Effects Panel">
+    <div class="ar-menu-header">
+      <h3>🎭 Hiệu ứng AR</h3>
+      <button id="btn-close-ar-menu" class="btn-close" aria-label="Close AR menu">✕</button>
+    </div>
+    <div class="ar-effects-grid">
+      <!-- Card hiệu ứng: Không có -->
+      <button class="ar-effect-card active" data-effect="none" aria-label="No effect">
+        <div class="effect-preview">🚫</div>
+        <span>Không có</span>
+      </button>
+      <!-- Card hiệu ứng: Tai thỏ -->
+      <button class="ar-effect-card" data-effect="bunny-ears" aria-label="Bunny ears effect">
+        <div class="effect-preview">🐰</div>
+        <span>Tai thỏ</span>
+      </button>
+      <!-- Card hiệu ứng: Kính mát -->
+      <button class="ar-effect-card" data-effect="sunglasses" aria-label="Sunglasses effect">
+        <div class="effect-preview">🕶️</div>
+        <span>Kính mát</span>
+      </button>
+      <!-- Card hiệu ứng: Mặt nạ -->
+      <button class="ar-effect-card" data-effect="mask" aria-label="Mask effect">
+        <div class="effect-preview">😷</div>
+        <span>Mặt nạ</span>
+      </button>
+      <!-- Card hiệu ứng: Tai mèo -->
+      <button class="ar-effect-card" data-effect="cat-ears" aria-label="Cat ears effect">
+        <div class="effect-preview">🐱</div>
+        <span>Tai mèo</span>
+      </button>
+      <!-- Card hiệu ứng: Vương miện -->
+      <button class="ar-effect-card" data-effect="crown" aria-label="Crown effect">
+        <div class="effect-preview">👑</div>
+        <span>Vương miện</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- POPUP ROOM INFO -->
+  <div id="room-info-popup" class="popup hidden" role="dialog" aria-label="Room Info Popup">
+    <div class="popup-content">
+      <div class="popup-header">
+        <h3>🔗 Thông tin phòng</h3>
+        <button id="btn-close-room-info" class="btn-close" aria-label="Close room info">✕</button>
+      </div>
+      <p class="popup-room-label">Room ID đang kết nối:</p>
+      <div class="popup-room-id-row">
+        <span id="popup-room-id-text" class="popup-room-id"></span>
+        <button id="btn-copy-popup-room-id" class="btn btn-icon-only" title="Sao chép">📋</button>
+      </div>
+      <p class="popup-hint">Chia sẻ ID này để người khác có thể tham gia cuộc gọi.</p>
+    </div>
+  </div>
+
+  <!-- THÔNG BÁO TOAST -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+</div><!-- end #call-screen -->
+
+<!-- ============================================================
+  SCRIPTS: Load theo thứ tự phụ thuộc
+============================================================ -->
+<script src="js/overlay.js"></script>
+<script src="js/mediapipe.js"></script>
+<script src="js/ar-effects.js"></script>
+<script src="js/secret.js"></script>
+<script src="js/peer.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>

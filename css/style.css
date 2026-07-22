@@ -1,0 +1,764 @@
+/* ================================================================
+  AR VIDEO CALL – style.css
+  Design system: Dark glassmorphism + vibrant accent
+  Cấu trúc:
+    1. CSS Variables & Reset
+    2. Background Canvas
+    3. Lobby Screen
+    4. Call Screen – Layout
+    5. Video Elements
+    6. Toolbar
+    7. AR Menu Panel
+    8. Popup & Toast
+    9. Animations & Keyframes
+    10. Secret Effects (ẩn, chỉ dùng class JS inject)
+    11. Responsive
+================================================================ */
+
+/* ----------------------------------------------------------------
+  1. CSS VARIABLES & RESET
+---------------------------------------------------------------- */
+:root {
+  /* Màu chủ đạo */
+  --clr-bg:           hsl(230, 25%, 8%);
+  --clr-surface:      hsl(230, 20%, 13%);
+  --clr-surface-2:    hsl(230, 18%, 18%);
+  --clr-glass:        hsla(230, 30%, 20%, 0.55);
+  --clr-glass-border: hsla(220, 60%, 80%, 0.12);
+  --clr-accent:       hsl(265, 90%, 65%);
+  --clr-accent-2:     hsl(200, 90%, 55%);
+  --clr-danger:       hsl(355, 85%, 58%);
+  --clr-success:      hsl(145, 75%, 48%);
+  --clr-text:         hsl(220, 20%, 92%);
+  --clr-text-muted:   hsl(220, 15%, 58%);
+  --clr-white:        #ffffff;
+
+  /* Typography */
+  --font-base: 'Inter', system-ui, sans-serif;
+  --fs-xs:   0.72rem;
+  --fs-sm:   0.85rem;
+  --fs-base: 1rem;
+  --fs-lg:   1.2rem;
+  --fs-xl:   1.5rem;
+  --fs-2xl:  2rem;
+  --fs-3xl:  2.8rem;
+
+  /* Spacing */
+  --sp-1: 4px;  --sp-2: 8px;   --sp-3: 12px;
+  --sp-4: 16px; --sp-6: 24px;  --sp-8: 32px;
+  --sp-12: 48px; --sp-16: 64px;
+
+  /* Border radius */
+  --r-sm: 8px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px; --r-full: 9999px;
+
+  /* Shadows */
+  --shadow-glass: 0 8px 32px hsla(0,0%,0%,0.35), inset 0 1px 0 hsla(255,100%,100%,0.07);
+  --shadow-btn:   0 4px 18px hsla(265,90%,60%,0.35);
+  --shadow-video: 0 0 0 2px var(--clr-accent), 0 12px 40px hsla(0,0%,0%,0.6);
+
+  /* Transitions */
+  --t-fast:   150ms ease;
+  --t-normal: 250ms ease;
+  --t-slow:   400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Toolbar height */
+  --toolbar-h: 90px;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-base);
+  background: var(--clr-bg);
+  color: var(--clr-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ----------------------------------------------------------------
+  2. BACKGROUND CANVAS (hạt lấp lánh nền)
+---------------------------------------------------------------- */
+#bg-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+}
+
+/* ----------------------------------------------------------------
+  3. SCREENS – Hệ thống màn hình (lobby / call)
+---------------------------------------------------------------- */
+.screen {
+  position: fixed;
+  inset: 0;
+  display: none;          /* ẩn mặc định */
+  z-index: 10;
+  transition: opacity var(--t-normal);
+  opacity: 0;
+}
+.screen.active {
+  display: flex;
+  opacity: 1;
+  animation: screenFadeIn 0.45s ease forwards;
+}
+
+/* ----------------------------------------------------------------
+  3a. LOBBY SCREEN
+---------------------------------------------------------------- */
+#lobby-screen {
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+}
+
+.lobby-card {
+  background: var(--clr-glass);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid var(--clr-glass-border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-glass);
+  padding: var(--sp-8);
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  animation: cardSlideUp 0.5s var(--t-slow) both;
+}
+
+.logo-area {
+  text-align: center;
+}
+
+.logo-icon {
+  font-size: 3.5rem;
+  margin-bottom: var(--sp-2);
+  animation: floatIcon 3s ease-in-out infinite;
+}
+
+.logo-title {
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--clr-accent), var(--clr-accent-2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.logo-subtitle {
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+  margin-top: var(--sp-1);
+}
+
+.lobby-section { display: flex; flex-direction: column; gap: var(--sp-3); }
+
+.section-label {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Divider */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--clr-glass-border);
+}
+
+/* Input group */
+.input-group {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+input[type="text"] {
+  flex: 1;
+  background: hsla(230, 25%, 10%, 0.7);
+  border: 1px solid var(--clr-glass-border);
+  border-radius: var(--r-md);
+  color: var(--clr-text);
+  font-family: var(--font-base);
+  font-size: var(--fs-base);
+  padding: var(--sp-3) var(--sp-4);
+  outline: none;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+input[type="text"]::placeholder { color: var(--clr-text-muted); }
+input[type="text"]:focus {
+  border-color: var(--clr-accent);
+  box-shadow: 0 0 0 3px hsla(265, 90%, 65%, 0.2);
+}
+
+/* Room ID display */
+.room-id-box {
+  background: hsla(265, 80%, 50%, 0.1);
+  border: 1px solid hsla(265, 80%, 60%, 0.3);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  animation: fadeIn var(--t-normal);
+}
+.room-id-label { font-size: var(--fs-xs); color: var(--clr-text-muted); margin-bottom: var(--sp-2); }
+.room-id-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.room-id-value {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  color: var(--clr-accent);
+  letter-spacing: 0.08em;
+  word-break: break-all;
+}
+.room-id-hint { font-size: var(--fs-xs); color: var(--clr-text-muted); margin-top: var(--sp-2); }
+
+.lobby-status {
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--clr-text-muted);
+  min-height: 1.5em;
+}
+
+/* ----------------------------------------------------------------
+  4. BUTTONS
+---------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-6);
+  border-radius: var(--r-md);
+  border: none;
+  font-family: var(--font-base);
+  font-size: var(--fs-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--clr-accent), hsl(265, 80%, 50%));
+  color: var(--clr-white);
+  box-shadow: var(--shadow-btn);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px hsla(265, 90%, 60%, 0.5);
+}
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  background: var(--clr-surface-2);
+  color: var(--clr-text);
+  border: 1px solid var(--clr-glass-border);
+}
+.btn-secondary:hover { background: var(--clr-surface); border-color: var(--clr-accent); }
+
+.btn-icon-only {
+  background: transparent;
+  border: none;
+  color: var(--clr-text-muted);
+  font-size: var(--fs-lg);
+  padding: var(--sp-2);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  transition: color var(--t-fast), background var(--t-fast);
+}
+.btn-icon-only:hover { color: var(--clr-accent); background: hsla(265,80%,60%,0.1); }
+
+.btn-full { width: 100%; }
+
+.btn-icon { font-size: var(--fs-lg); }
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: var(--clr-text-muted);
+  font-size: var(--fs-lg);
+  cursor: pointer;
+  padding: var(--sp-2);
+  border-radius: var(--r-sm);
+  line-height: 1;
+  transition: color var(--t-fast), background var(--t-fast);
+}
+.btn-close:hover { color: var(--clr-text); background: hsla(255,20%,50%,0.15); }
+
+/* ----------------------------------------------------------------
+  5. CALL SCREEN LAYOUT
+---------------------------------------------------------------- */
+#call-screen {
+  background: var(--clr-bg);
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/* Remote video = toàn bộ diện tích trừ toolbar */
+.remote-video-container {
+  position: relative;
+  flex: 1;
+  background: hsl(230, 28%, 5%);
+  overflow: hidden;
+}
+
+#remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Overlay chờ kết nối */
+.waiting-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  background: hsla(230, 28%, 5%, 0.92);
+  backdrop-filter: blur(8px);
+  color: var(--clr-text-muted);
+  font-size: var(--fs-lg);
+  z-index: 5;
+  transition: opacity var(--t-normal);
+}
+.waiting-overlay.hidden { opacity: 0; pointer-events: none; }
+
+.waiting-spinner {
+  width: 52px;
+  height: 52px;
+  border: 3px solid var(--clr-glass-border);
+  border-top-color: var(--clr-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Local video PIP */
+.local-video-container {
+  position: absolute;
+  bottom: calc(var(--toolbar-h) + var(--sp-4));
+  right: var(--sp-4);
+  width: 140px;
+  height: 190px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-video);
+  z-index: 20;
+  cursor: grab;
+  transition: box-shadow var(--t-fast), transform var(--t-fast);
+}
+.local-video-container:hover { transform: scale(1.03); }
+.local-video-container:active { cursor: grabbing; }
+
+/* Video thô (ẩn) – dùng làm source cho MediaPipe */
+.hidden-source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Canvas hiển thị local video + AR overlay */
+.local-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Badge tên hiệu ứng */
+.effect-badge {
+  position: absolute;
+  top: var(--sp-2);
+  left: 50%;
+  transform: translateX(-50%);
+  background: hsla(265, 80%, 50%, 0.85);
+  color: var(--clr-white);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+/* ----------------------------------------------------------------
+  6. TOOLBAR
+---------------------------------------------------------------- */
+.toolbar {
+  height: var(--toolbar-h);
+  background: var(--clr-glass);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-top: 1px solid var(--clr-glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-6);
+  z-index: 30;
+  flex-shrink: 0;
+}
+
+.tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--clr-surface-2);
+  border: 1px solid var(--clr-glass-border);
+  border-radius: var(--r-md);
+  color: var(--clr-text);
+  cursor: pointer;
+  font-family: var(--font-base);
+  min-width: 62px;
+  padding: var(--sp-2) var(--sp-3);
+  transition: all var(--t-fast);
+  position: relative;
+}
+.tool-btn:hover {
+  background: var(--clr-surface);
+  border-color: var(--clr-accent);
+  transform: translateY(-2px);
+}
+.tool-btn:active { transform: translateY(0); }
+
+.tool-btn.active {
+  background: hsla(265, 80%, 50%, 0.15);
+  border-color: hsla(265, 80%, 60%, 0.4);
+}
+
+.tool-btn.danger {
+  background: hsla(355, 85%, 50%, 0.15);
+  border-color: hsla(355, 85%, 55%, 0.4);
+}
+.tool-btn.danger:hover {
+  background: var(--clr-danger);
+  border-color: var(--clr-danger);
+  color: var(--clr-white);
+  box-shadow: 0 4px 18px hsla(355, 85%, 50%, 0.5);
+}
+
+.tool-btn.muted {
+  background: hsla(355, 85%, 50%, 0.12);
+  border-color: hsla(355, 85%, 55%, 0.3);
+  color: var(--clr-text-muted);
+}
+
+.tool-btn-icon { font-size: 1.4rem; line-height: 1; }
+.tool-btn-label { font-size: var(--fs-xs); font-weight: 500; }
+
+/* ----------------------------------------------------------------
+  7. AR MENU PANEL (slide-up)
+---------------------------------------------------------------- */
+.ar-menu-panel {
+  position: absolute;
+  bottom: var(--toolbar-h);
+  left: 0;
+  right: 0;
+  z-index: 25;
+  background: var(--clr-glass);
+  backdrop-filter: blur(32px) saturate(170%);
+  -webkit-backdrop-filter: blur(32px) saturate(170%);
+  border-top: 1px solid var(--clr-glass-border);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: var(--sp-6);
+  transform: translateY(0);
+  transition: transform var(--t-slow), opacity var(--t-normal);
+}
+.ar-menu-panel.hidden {
+  transform: translateY(110%);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.ar-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+}
+.ar-menu-header h3 {
+  font-size: var(--fs-lg);
+  font-weight: 600;
+}
+
+.ar-effects-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+
+.ar-effect-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-4) var(--sp-3);
+  background: var(--clr-surface-2);
+  border: 2px solid transparent;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  font-family: var(--font-base);
+  color: var(--clr-text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transition: all var(--t-normal);
+}
+.ar-effect-card:hover {
+  background: var(--clr-surface);
+  border-color: var(--clr-accent);
+  color: var(--clr-text);
+  transform: translateY(-3px);
+}
+.ar-effect-card.active {
+  border-color: var(--clr-accent);
+  background: hsla(265, 80%, 50%, 0.18);
+  color: var(--clr-white);
+}
+
+.effect-preview { font-size: 2.2rem; line-height: 1.2; }
+
+/* ----------------------------------------------------------------
+  8. POPUP & TOAST
+---------------------------------------------------------------- */
+.popup {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsla(230, 30%, 5%, 0.6);
+  backdrop-filter: blur(6px);
+  padding: var(--sp-6);
+  transition: opacity var(--t-normal);
+}
+.popup.hidden { opacity: 0; pointer-events: none; display: none; }
+
+.popup-content {
+  background: var(--clr-glass);
+  border: 1px solid var(--clr-glass-border);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-glass);
+  padding: var(--sp-8);
+  width: 100%;
+  max-width: 380px;
+  animation: cardSlideUp 0.35s var(--t-slow) both;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+}
+.popup-header h3 { font-size: var(--fs-lg); font-weight: 600; }
+
+.popup-room-label { font-size: var(--fs-sm); color: var(--clr-text-muted); margin-bottom: var(--sp-2); }
+.popup-room-id-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  background: hsla(265,80%,50%,0.08);
+  border: 1px solid hsla(265,80%,60%,0.2);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+}
+.popup-room-id {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  font-family: 'Courier New', monospace;
+  color: var(--clr-accent);
+  letter-spacing: 0.08em;
+  word-break: break-all;
+}
+.popup-hint { font-size: var(--fs-xs); color: var(--clr-text-muted); margin-top: var(--sp-3); }
+
+/* Toast */
+.toast-container {
+  position: absolute;
+  top: var(--sp-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--clr-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--clr-glass-border);
+  border-radius: var(--r-full);
+  color: var(--clr-text);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  padding: var(--sp-2) var(--sp-6);
+  white-space: nowrap;
+  box-shadow: var(--shadow-glass);
+  animation: toastIn 0.35s var(--t-slow) both;
+}
+.toast.out { animation: toastOut 0.3s ease forwards; }
+
+/* ----------------------------------------------------------------
+  9. SECRET OVERLAY (class được JS inject vào local-video-container)
+---------------------------------------------------------------- */
+
+/* Đen trắng cho video local khi nhíu mày */
+.secret-grayscale .local-canvas {
+  filter: grayscale(1) contrast(1.08);
+  transition: filter 0.5s ease;
+}
+
+/* Canvas overlay bí mật (nằm trên canvas AR) */
+#secret-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 15;
+}
+
+/* Loading icon (nhíu mày) */
+.secret-loading-icon {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.5rem;
+  z-index: 20;
+  animation: spin 1.4s linear infinite;
+  pointer-events: none;
+}
+
+/* ----------------------------------------------------------------
+  10. UTILITY CLASSES
+---------------------------------------------------------------- */
+.hidden { display: none !important; }
+
+/* ----------------------------------------------------------------
+  11. ANIMATIONS & KEYFRAMES
+---------------------------------------------------------------- */
+@keyframes screenFadeIn {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes cardSlideUp {
+  from { opacity: 0; transform: translateY(30px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes floatIcon {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-16px) scale(0.92); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes toastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-12px); }
+}
+
+/* Particle / float-up animation cho icon 💯 và bông hoa */
+@keyframes floatUp {
+  0%   { opacity: 1; transform: translateY(0) scale(1) rotate(var(--rot, 0deg)); }
+  80%  { opacity: 0.9; }
+  100% { opacity: 0; transform: translateY(-120px) scale(0.6) rotate(calc(var(--rot, 0deg) + 30deg)); }
+}
+
+@keyframes heartBeat {
+  0%  { transform: scale(1); }
+  25% { transform: scale(1.12); }
+  50% { transform: scale(1); }
+  75% { transform: scale(1.06); }
+  100%{ transform: scale(1); }
+}
+
+@keyframes sparkleIn {
+  0%   { opacity: 0; transform: scale(0) rotate(0deg); }
+  60%  { opacity: 1; transform: scale(1.2) rotate(180deg); }
+  100% { opacity: 0; transform: scale(0.8) rotate(360deg); }
+}
+
+@keyframes memeSlideIn {
+  from { opacity: 0; transform: scale(0.5) translateY(30px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+/* ----------------------------------------------------------------
+  12. RESPONSIVE
+---------------------------------------------------------------- */
+@media (min-width: 768px) {
+  .lobby-card { padding: var(--sp-12); }
+
+  .local-video-container {
+    width: 200px;
+    height: 270px;
+    bottom: calc(var(--toolbar-h) + var(--sp-6));
+    right: var(--sp-6);
+  }
+
+  .ar-effects-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .toolbar { gap: var(--sp-6); }
+  .tool-btn { min-width: 76px; padding: var(--sp-3) var(--sp-4); }
+}
+
+@media (min-width: 1024px) {
+  :root { --toolbar-h: 100px; }
+}
